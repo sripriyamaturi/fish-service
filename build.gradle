@@ -1,0 +1,100 @@
+/**
+ * WARNING: This file was created via the Paved Path Tool. Manual modifications of this file are not supported.
+ * Read more here: go/ppt-managed-files
+ */
+
+import org.apache.tools.ant.filters.ReplaceTokens
+
+buildscript {
+    repositories {
+        maven { url 'https://packages.atlassian.com/maven/private' }
+    }
+}
+
+plugins {
+  id "java" 
+  id "net.linguica.maven-settings" version "0.5"
+  id "io.spring.dependency-management" version "1.1.6"
+}
+
+group = "fish_service"
+version "1.0-SNAPSHOT"
+sourceCompatibility = 21
+targetCompatibility = 21
+
+repositories {
+    maven {
+        name "maven-atlassian-com"
+        url "https://packages.atlassian.com/maven/repository/internal"
+    }
+}
+
+
+dependencies {
+  
+  testImplementation "org.springframework.boot:spring-boot-starter-test"
+}
+
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+        exceptionFormat = "FULL"
+    }
+    reports {
+        junitXml.required = true
+        html.required = true
+    }
+
+    filter {
+        // exclude integration tests - they are run by intTest
+        excludeTestsMatching "*IT"
+    }
+}
+
+
+processResources {
+    // replace @project.name@ with the JAR name, etc.
+    filter(ReplaceTokens, tokens: [
+        'project.name'       : "",
+        'project.version'    : project.version.toString(),
+    ])
+}
+
+jar {
+    enabled = false
+}
+
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("-parameters")
+}
+
+task intTest(type: Test) {
+        description = 'Runs integration tests.'
+        group = 'verification'
+
+        // JUnit 5
+        useJUnitPlatform()
+
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
+        filter {
+            //include all integration tests
+            includeTestsMatching "*IT"
+            setFailOnNoMatchingTests(false)
+        }
+
+        // make the test always run
+        outputs.upToDateWhen { false }
+
+        // ensure unit tests are run first
+        dependsOn test
+}
+check.dependsOn intTest
+
+
+
